@@ -1,0 +1,74 @@
+name: LanceDB server macOS ARM64
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - rust/lancedb/**
+      - rust/lancedb-server/**
+      - .github/workflows/lancedb-server-macos.yml
+  pull_request:
+    paths:
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - rust/lancedb/**
+      - rust/lancedb-server/**
+      - .github/workflows/lancedb-server-macos.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-package:
+    name: Build, test, and package Apple Silicon binary
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: "1"
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: lancedb-server-macos-arm64
+
+      - name: Install protobuf compiler
+        run: brew install protobuf
+
+      - name: Confirm native Apple Silicon runner
+        run: |
+          test "$(uname -s)" = "Darwin"
+          test "$(uname -m)" = "arm64"
+          rustc -vV
+          protoc --version
+
+      - name: Build, test, and package
+        run: bash rust/lancedb-server/scripts/build-macos-arm64.sh
+
+      - name: Upload unsigned test package
+        uses: actions/upload-artifact@v7
+        with:
+          name: lancedb-server-macos-arm64
+          path: |
+            dist/lancedb-server-macos-arm64.tar.gz
+            dist/lancedb-server-macos-arm64.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 14
