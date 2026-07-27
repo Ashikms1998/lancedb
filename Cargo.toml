@@ -1,5 +1,5 @@
 [workspace]
-members = ["rust/lancedb", "nodejs", "python"]
+members = ["rust/lancedb", "rust/lancedb-server", "nodejs", "python"]
 resolver = "2"
 
 [workspace.package]
@@ -79,4 +79,12 @@ incremental = false
 debug = false
 debug-assertions = false
 strip = "debuginfo"
+incremental = false
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
 incremental = false
